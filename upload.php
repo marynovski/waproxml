@@ -8,7 +8,7 @@ function xmlEscape($string) {
 $data=file($_FILES['csv_file']['tmp_name'],FILE_IGNORE_NEW_LINES);
 $liczbaDokumentow = count($data) - 1;
 //print_r($data);
-
+//die();
 $nowDateTime = new DateTimeImmutable('now');
 
 $xml  = '<?xml version="1.0" encoding="utf-8" ?>'."\n";
@@ -25,12 +25,18 @@ $xml .= '    <DOKUMENTY>'."\n";
 $ignoreHeaderRow = true;
 $id = 1;
 foreach ($data as $row) {
+
     if ($ignoreHeaderRow) {
         $ignoreHeaderRow = false;
         continue;
     }
     $invoice_data = explode(';', $row);
-    $paymentType = 'Przelew';
+    if ($invoice_data[12] == 'GOTÓWKA') {
+        $paymentType = 'gotówka';
+    } else {
+        $paymentType = 'Przelew';
+    }
+
     $issueDate = strtotime($invoice_data[1]);
     $clarionStartDate = strtotime('1800-12-28');
 
