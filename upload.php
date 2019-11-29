@@ -40,8 +40,10 @@ foreach ($data as $row) {
 
     if ($invoice_data[12] == 'GOTÓWKA') {
         $paymentType = 'gotówka';
+        $paymentTypeId = 1;
     } else {
         $paymentType = 'Przelew';
+        $paymentTypeId = 3;
     }
 
     $issueDate = strtotime($invoice_data[1]);
@@ -88,7 +90,7 @@ foreach ($data as $row) {
     $xml .= '                <CZY_FISKALNY></CZY_FISKALNY>' . "\n";
     $xml .= '                <NR_DOKM>' . $invoice_data[0] . '</NR_DOKM>' . "\n";
     $xml .= '                <FORMA_PLATNOSCI>' . $paymentType . '</FORMA_PLATNOSCI>' . "\n";
-    $xml .= '                <ID_FORMY_PLAT></ID_FORMY_PLAT>' . "\n";
+    $xml .= '                <ID_FORMY_PLAT>' . $paymentTypeId . '</ID_FORMY_PLAT>' . "\n";
     $xml .= '                <CZY_POZ_KOSZTOWE_BAZOWE></CZY_POZ_KOSZTOWE_BAZOWE>' . "\n";
     $xml .= '                <TROJSTRONNY_UE></TROJSTRONNY_UE>' . "\n";
     $xml .= '                <WEWNETRZNY></WEWNETRZNY>' . "\n";
@@ -404,6 +406,10 @@ $xml .= '            </POLA_DODATKOWE>'."\n";
 $xml .= '        </ARTYKUL>'."\n";
 $xml .= '    </KARTOTEKA_ARTYKULOW>'."\n";
 $xml .= '</MAGIK_EKSPORT>'."\n";
+
+if(file_exists('wapro.xml')) {
+    unlink('wapro.xml');
+}
 
 $xmlFile = fopen('wapro.xml', 'w');
 fwrite($xmlFile, $xml);
