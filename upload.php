@@ -7,8 +7,6 @@ function xmlEscape($string) {
 
 $data=file($_FILES['csv_file']['tmp_name'],FILE_IGNORE_NEW_LINES);
 $liczbaDokumentow = count($data) - 1;
-//print_r($data);
-//die();
 $nowDateTime = new DateTimeImmutable('now');
 
 $xml  = '<?xml version="1.0" encoding="utf-8" ?>'."\n";
@@ -16,7 +14,7 @@ $xml .= '<MAGIK_EKSPORT>'."\n";
 $xml .= '    <INFO_EKSPORTU>'."\n";
 $xml .= '        <WERSJA_MAGIKA>4.2.0</WERSJA_MAGIKA>'."\n";
 $xml .= '        <NAZWA_PROGRAMU>FatApp WAPRO XML Converter</NAZWA_PROGRAMU>'."\n";
-$xml .= '        <WERSJA_PROGRAMU>0.1</WERSJA_PROGRAMU>'."\n";
+$xml .= '        <WERSJA_PROGRAMU>0.3</WERSJA_PROGRAMU>'."\n";
 $xml .= '        <DATA_EKSPORTU>' . $nowDateTime->format('d-m-Y') . '</DATA_EKSPORTU>'."\n";
 $xml .= '        <GODZINA_EKSPORTU>' . $nowDateTime->format('H:i:s') . '</GODZINA_EKSPORTU>'."\n";
 $xml .= '        <LICZBA_DOKUMENTOW>'.$liczbaDokumentow.'</LICZBA_DOKUMENTOW>'."\n";
@@ -30,7 +28,16 @@ foreach ($data as $row) {
         $ignoreHeaderRow = false;
         continue;
     }
+    $row = str_replace('"', '', $row);
     $invoice_data = explode(';', $row);
+
+    if (count($invoice_data) != 12 && count($invoice_data) != 13 && count($invoice_data) != 14) {
+        $_SESSION['fileIsReady'] = false;
+        $_SESSION['fileError'] = '<span class="error">Niepoprawny plik! Porównaj swój plik ze wzorem.</span>';
+        header('Location: index.php');
+    }
+
+
     if ($invoice_data[12] == 'GOTÓWKA') {
         $paymentType = 'gotówka';
     } else {
@@ -97,8 +104,8 @@ foreach ($data as $row) {
     $xml .= '                    <TERMIN_PLATNOSCI>' . $datediff . '</TERMIN_PLATNOSCI>' . "\n";
     $xml .= '                </DATY>' . "\n";
     $xml .= '                <WARTOSCI_NAGLOWKA>' . "\n";
-    $xml .= '                    <NETTO_SPRZEDAZY>' . number_format($invoice_data[9], 2, '.', '') . '</NETTO_SPRZEDAZY>' . "\n";
-    $xml .= '                    <BRUTTO_SPRZEDAZY>' . number_format($invoice_data[11], 2, '.', '') . '</BRUTTO_SPRZEDAZY>' . "\n";
+    $xml .= '                    <NETTO_SPRZEDAZY>' . number_format((float)$invoice_data[9], 2, '.', '') . '</NETTO_SPRZEDAZY>' . "\n";
+    $xml .= '                    <BRUTTO_SPRZEDAZY>' . number_format((float)$invoice_data[11], 2, '.', '') . '</BRUTTO_SPRZEDAZY>' . "\n";
     $xml .= '                    <NETTO_SPRZEDAZY_WALUTA></NETTO_SPRZEDAZY_WALUTA>' . "\n";
     $xml .= '                    <BRUTTO_SPRZEDAZY_WALUTA></BRUTTO_SPRZEDAZY_WALUTA>' . "\n";
     $xml .= '                    <NETTO_ZAKUPU>0.00</NETTO_ZAKUPU>' . "\n";
@@ -228,8 +235,8 @@ foreach ($data as $row) {
     $xml .= '                   <ID_DOKUMENTU_HANDLOWEGO>'. $id .'</ID_DOKUMENTU_HANDLOWEGO>' . "\n";
     $xml .= '                   <ID_DOKUMENTU_FINANSOWEGO>'. $id .'</ID_DOKUMENTU_FINANSOWEGO>' . "\n";
     $xml .= '                   <DATA_ROZLICZENIA>' . $datediff . '</DATA_ROZLICZENIA>' . "\n";
-    $xml .= '                   <KWOTA>' . number_format($invoice_data[11], 2, '.', '') . '</KWOTA>' . "\n";
-    $xml .= '                   <KWOTA_W>' . number_format($invoice_data[11], 2, '.', '') . '</KWOTA_W>' . "\n";
+    $xml .= '                   <KWOTA>' . number_format((float)$invoice_data[11], 2, '.', '') . '</KWOTA>' . "\n";
+    $xml .= '                   <KWOTA_W>' . number_format((float)$invoice_data[11], 2, '.', '') . '</KWOTA_W>' . "\n";
     $xml .= '                    <ID_ROZRACHUNKU_HANDLOWEGO></ID_ROZRACHUNKU_HANDLOWEGO>' . "\n";
     $xml .= '                    <ID_ROZRACHUNKU_FINANSOWEGO></ID_ROZRACHUNKU_FINANSOWEGO>' . "\n";
     $xml .= '                   <ID_ROZLICZENIA></ID_ROZLICZENIA>' . "\n";
@@ -266,7 +273,7 @@ foreach ($data as $row) {
         $ignoreHeaderRow = false;
         continue;
     }
-
+    $row = str_replace('"', '', $row);
     $invoice_data = explode(';', $row);
 
     $xml .= '       <KONTRAHENT>' . "\n";
@@ -401,7 +408,8 @@ $xml .= '</MAGIK_EKSPORT>'."\n";
 $xmlFile = fopen('wapro.xml', 'w');
 fwrite($xmlFile, $xml);
 fclose($xmlFile);
-
-$_SESSION['fileIsReady'] = true;
+if(!isset($_SESSION['fileIsReady'])) {
+    $_SESSION['fileIsReady'] = true;
+}
 
 header('Location: index.php');
