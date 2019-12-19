@@ -35,7 +35,8 @@ foreach ($data as $row) {
     if ( count($invoice_data) != 12 && count($invoice_data) != 13 && count($invoice_data) != 14 ) {
         $_SESSION['fileIsReady'] = false;
         $_SESSION['fileError'] = '<span class="error">Niepoprawny plik! Porównaj swój plik ze wzorem.</span>';
-    } else {
+        header('Location: index.php');
+    }
 
 
         if ( $invoice_data[11] == 'GOTÓWKA' ) {
@@ -425,5 +426,5 @@ foreach ($data as $row) {
     if ( !isset($_SESSION['fileIsReady']) ) {
         $_SESSION['fileIsReady'] = true;
     }
-}
+
 header('Location: index.php');
