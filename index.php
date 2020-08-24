@@ -15,7 +15,7 @@
 
         #content {
             width: 500px;
-            height: 250px;
+            height: 500px;
             margin-right: auto;
             margin-left: auto;
             text-align: center;
@@ -54,7 +54,7 @@
 </head>
 <body>
     <header id="header">
-        <h1>FatApp WAPRO XML Converter v.0.3</h1>
+        <h1>FatApp WAPRO XML Converter v.1.1</h1>
     </header>
     <main id="content">
         <div style="font-size: 15px;">
@@ -65,6 +65,22 @@
             <div class="form-field">
                 <label for="csv_file">Plik CSV z danymi faktur</label>
                 <input style="font-size: 20px;" type="file" accept="text/csv" name="csv_file" required>
+            </div>
+            <div class="form-field">
+                <label for="currency">Waluta</label><br>
+                <select name="currency">
+                    <option selected="selected" value="PLN">Złoty(PLN)</option>
+                    <option value="CZK">Korona czeska(Kč)</option>
+                    <option value="EUR">Euro(EUR)</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="countryCode">Kraj</label>
+                <select name="countryCode">
+                    <option selected="selected" value="PL">Polska</option>
+                    <option value="CZ">Czechy</option>
+                    <option value="SK">Słowacja</option>
+                </select>
             </div>
             <button id="submit-button" type="submit">Konwertuj</button>
             <br><br>

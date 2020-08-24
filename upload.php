@@ -1,21 +1,62 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
+
+include_once 'Model/Currency.php';
+include_once 'Controller/CurrencyController.php';
 
 function xmlEscape($string) {
     return str_replace(array('&', '<', '>', '\'', '"'), array('&amp;', '&lt;', '&gt;', '&apos;', '&quot;'), $string);
 }
 
+function setCurrencyData(string $code, string $issueDateString, bool $getNewRate, float $currencyRate = 1.00) : Currency
+{
+    /** @var CurrencyController $currencyController */
+    $currencyController = new CurrencyController();
+
+    if ($getNewRate) {
+        /** @var float $rate */
+        $rate = $currencyController->getCurrencyRate($code, $issueDateString);
+        $currencyRate = $rate->rates[0]->mid;
+    }
+
+
+    switch ($code) {
+        case 'PLN':
+            $currency = new Currency($code, 0.00, 'Złoty');
+            break;
+        case 'EUR':
+            $currency = new Currency($code, $currencyRate, 'Euro');
+            break;
+        case 'CZK':
+            $currency = new Currency($code, $currencyRate, 'Korona czeska');
+            break;
+        default:
+            $currency = new Currency($code, 0.00, 'Złoty');
+            break;
+    }
+
+    return $currency;
+}
+
 $data=file($_FILES['csv_file']['tmp_name'],FILE_IGNORE_NEW_LINES);
+$currencyCode = $_POST['currency'];
+$countryCode = $_POST['countryCode'];
+
 
 $liczbaDokumentow = count($data) - 1;
 $nowDateTime = new DateTimeImmutable('now');
+$lastInvoiceDate = $nowDateTime;
 
 $xml  = '<?xml version="1.0" encoding="utf-8" ?>'."\n";
 $xml .= '<MAGIK_EKSPORT>'."\n";
 $xml .= '    <INFO_EKSPORTU>'."\n";
 $xml .= '        <WERSJA_MAGIKA>4.2.0</WERSJA_MAGIKA>'."\n";
 $xml .= '        <NAZWA_PROGRAMU>FatApp WAPRO XML Converter</NAZWA_PROGRAMU>'."\n";
-$xml .= '        <WERSJA_PROGRAMU>0.3</WERSJA_PROGRAMU>'."\n";
+$xml .= '        <WERSJA_PROGRAMU>1.1</WERSJA_PROGRAMU>'."\n";
 $xml .= '        <DATA_EKSPORTU>' . $nowDateTime->format('d-m-Y') . '</DATA_EKSPORTU>'."\n";
 $xml .= '        <GODZINA_EKSPORTU>' . $nowDateTime->format('H:i:s') . '</GODZINA_EKSPORTU>'."\n";
 $xml .= '        <LICZBA_DOKUMENTOW>'.$liczbaDokumentow.'</LICZBA_DOKUMENTOW>'."\n";
@@ -23,6 +64,7 @@ $xml .= '    </INFO_EKSPORTU>'."\n";
 $xml .= '    <DOKUMENTY>'."\n";
 $ignoreHeaderRow = true;
 $id = 1;
+$lastCurrencyRate = 0.00;
 foreach ($data as $row) {
 
     if ( $ignoreHeaderRow ) {
@@ -33,12 +75,11 @@ foreach ($data as $row) {
     $invoice_data = explode(';', $row);
 
     if ( count($invoice_data) != 12 && count($invoice_data) != 13 && count($invoice_data) != 14 ) {
+
         $_SESSION['fileIsReady'] = false;
         $_SESSION['fileError'] = '<span class="error">Niepoprawny plik! Porównaj swój plik ze wzorem.</span>';
         header('Location: index.php');
     }
-
-
         if ( $invoice_data[11] == 'GOTÓWKA' ) {
             $paymentType = 'gotówka';
             $paymentTypeId = 1;
@@ -48,8 +89,16 @@ foreach ($data as $row) {
         }
 
         $issueDate = strtotime($invoice_data[1]);
-        $clarionStartDate = strtotime('1800-12-28');
+        $issueDateYmd = new DateTimeImmutable($invoice_data[1]);
 
+        if ( $lastInvoiceDate->format('Y-m-d') != $issueDateYmd->format('Y-m-d') ) {
+            /** @var Currency $currency */
+            $currency = setCurrencyData($currencyCode, $invoice_data[1], true);
+        } else {
+            $currency = setCurrencyData($currencyCode, $invoice_data[1], false, $lastCurrencyRate);
+        }
+        $clarionStartDate = strtotime('1800-12-28');
+        $lastCurrencyRate = $currency->getRate();
 
         $datediff = $issueDate - $clarionStartDate;
         $datediff = round($datediff / (60 * 60 * 24));
@@ -76,7 +125,7 @@ foreach ($data as $row) {
         $xml .= '                <OBLICZANIE_WG_CEN></OBLICZANIE_WG_CEN>' . "\n";
         $xml .= '                <TYP_DOKUMENTU>FV</TYP_DOKUMENTU>' . "\n";
         $xml .= '                <OPIS>Sprzedaż usług</OPIS>' . "\n";
-        $xml .= '                <SYM_WAL>PLN</SYM_WAL>' . "\n";
+        $xml .= '                <SYM_WAL>' . $currency->getCode() . '</SYM_WAL>' . "\n";
         $xml .= '                <NR_PODSTAWY/>' . "\n";
         if ( $paymentTypeId === 1 ) {
             $xml .= '                <ID_KASY>' . $id . '</ID_KASY>' . "\n";
@@ -125,7 +174,7 @@ foreach ($data as $row) {
         $xml .= '                    <SUMA_NETTO_POZ_FZAL_WAL></SUMA_NETTO_POZ_FZAL_WAL>' . "\n";
         $xml .= '                    <KW_ROZRACH></KW_ROZRACH>' . "\n";
         $xml .= '                    <KW_ROZRACH_W></KW_ROZRACH_W>' . "\n";
-        $xml .= '                    <KURS_WALUTY></KURS_WALUTY>' . "\n";
+        $xml .= '                    <KURS_WALUTY>' . $currency->getRate() . '</KURS_WALUTY>' . "\n";
         $xml .= '                    <KURS_WALUTY_PZ></KURS_WALUTY_PZ>' . "\n";
         $xml .= '                </WARTOSCI_NAGLOWKA>' . "\n";
         $xml .= '                <POLA_DODATKOWE>' . "\n";
@@ -300,7 +349,7 @@ foreach ($data as $row) {
         $xml .= '           <ULICA_LOKAL>' . $invoice_data[4] . '</ULICA_LOKAL>' . "\n";
         $xml .= '           <NAZWA_PELNA>' . xmlEscape($invoice_data[2]) . '</NAZWA_PELNA>' . "\n";
         $xml .= '           <ADRES>' . $invoice_data[4] . '</ADRES>' . "\n";
-        $xml .= '           <SYMBOL_KRAJU_KONTRAHENTA>PL</SYMBOL_KRAJU_KONTRAHENTA>' . "\n";
+        $xml .= '           <SYMBOL_KRAJU_KONTRAHENTA>'.$countryCode.'</SYMBOL_KRAJU_KONTRAHENTA>' . "\n";
         $xml .= '           <NAZWA_KLASYFIKACJI></NAZWA_KLASYFIKACJI>' . "\n";
         $xml .= '           <NAZWA_GRUPY></NAZWA_GRUPY>' . "\n";
         $xml .= '           <ODBIORCA>1</ODBIORCA>' . "\n";
